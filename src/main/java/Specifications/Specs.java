@@ -8,6 +8,8 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 
+import static org.hamcrest.Matchers.lessThan;
+
 public class Specs {
     public static RequestSpecification requestSpecification(String baseURL, String basePath){
         return new RequestSpecBuilder()
@@ -21,6 +23,8 @@ public class Specs {
     public static ResponseSpecification responseSpecification(){
         return new ResponseSpecBuilder()
                 .log(LogDetail.ALL)
+                .expectStatusCode(200)
+                .expectResponseTime(lessThan(5000L))
                 .build();
     }
 
