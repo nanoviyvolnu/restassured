@@ -11,6 +11,7 @@ public class CreateUserResponse {
     public String userID;
     public String username;
     public ArrayList<Books> books;
+    private String token;
     public String code;
     public String message;
 }

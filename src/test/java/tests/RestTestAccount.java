@@ -3,6 +3,7 @@ package tests;
 import Models.CreateUserRequest;
 import Models.CreateUserResponse;
 import Models.GetUserResponse;
+import Specifications.Specs;
 import Utils.GenerateValidPassword;
 import com.github.javafaker.Faker;
 import io.restassured.RestAssured;
@@ -46,10 +47,10 @@ public class RestTestAccount {
         Faker faker = new Faker();
         GenerateValidPassword generateValidPassword = new GenerateValidPassword();
         CreateUserRequest createUserRequest = new CreateUserRequest();
-//        createUserRequest.setUserName(faker.name().username());
-//        createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
-        createUserRequest.setUserName("reynaldo.harvey");
-        createUserRequest.setPassword("Vl9)<!)!");
+        createUserRequest.setUserName(faker.name().username());
+        createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
+//        createUserRequest.setUserName("reynaldo.harvey");
+//        createUserRequest.setPassword("Vl9)<!)!");
 
         Response response = given()
                 .contentType(ContentType.JSON)
@@ -74,7 +75,7 @@ public class RestTestAccount {
         createUserRequest.setUserName("reynaldo.harvey");
         createUserRequest.setPassword("Vl9)<!)!");
 
-        String token = RestAssured
+        CreateUserResponse createUserResponse = RestAssured
                 .given()
                 .log().all()
                 .when()
@@ -84,58 +85,53 @@ public class RestTestAccount {
                 .then()
                 .log().all()
                 .statusCode(200)
-                .extract().response().jsonPath().getString("token");
+                .extract().response().as(CreateUserResponse.class);
 
-        System.out.println(token);
+        System.out.println(createUserResponse.getToken());
     }
 
     @Test(testName = "Test api for get user data")
     public void getUserTestById(){
+        Specs.installSpec(Specs.requestSpecification("https://demoqa.com/", "Account/v1/"), Specs.responseSpecification());
+
         Faker faker = new Faker();
         GenerateValidPassword generateValidPassword = new GenerateValidPassword();
+
         CreateUserRequest createUserRequest = new CreateUserRequest();
         createUserRequest.setUserName(faker.name().username());
         createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
 
-        CreateUserResponse createUserResponse = given()
-                .log().all()
+        CreateUserResponse createUserResponse =
+                given()
                 .when()
-                .contentType(ContentType.JSON)
-                .body(createUserRequest)
-                .post("https://demoqa.com/Account/v1/User")
+                    .body(createUserRequest)
+                    .post("User")
                 .then()
-                .log().all().statusCode(201)
-                .extract().response().getBody().as(CreateUserResponse.class);
+                    .statusCode(201)
+                    .extract().response().as(CreateUserResponse.class);
 
         System.out.println("UserID: " + createUserResponse.getUserID());
 
-        Assert.assertNotNull(createUserResponse.getUserID());
-
-        String token = RestAssured
+        CreateUserResponse createUserResponse1 = RestAssured
                 .given()
-                .log().all()
                 .when()
-                .contentType(ContentType.JSON)
-                .body(createUserRequest)
-                .post("https://demoqa.com/Account/v1/GenerateToken")
+                    .body(createUserRequest)
+                    .post("GenerateToken")
                 .then()
-                .log().all()
-                .statusCode(200)
-                .extract().response().jsonPath().getString("token");
-
-        System.out.println(token);
+                    .statusCode(200)
+                    .extract().response().as(CreateUserResponse.class);
 
         GetUserResponse getUserResponse =
                 given()
-                    .contentType(ContentType.JSON)
-                    .header("Authorization", "Bearer " + token)
+                    .header("Authorization", "Bearer " + createUserResponse1.getToken())
                     .body(createUserRequest)
                 .when()
-                    .get("https://demoqa.com/Account/v1/User/" + createUserResponse.getUserID())
+                    .get("User/" + createUserResponse.getUserID())
                 .then()
-                    .log().all()
                     .extract().response().getBody().as(GetUserResponse.class);
 
+        Assert.assertNotNull(createUserResponse1.getToken());
+        Assert.assertNotNull(createUserResponse.getUserID());
         Assert.assertEquals(createUserResponse.getUserID(), getUserResponse.getUserId());
     }
 
