@@ -7,7 +7,7 @@ import java.util.Date;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class AuthRequest {
+public class CreateUserRequest {
     private String userName;
     private String password;
     private String token;

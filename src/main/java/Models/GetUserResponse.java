@@ -7,10 +7,8 @@ import java.util.ArrayList;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class AuthResponse {
+public class GetUserResponse {
     public String userId;
     public String username;
     public ArrayList<Books> books;
-    public String code;
-    public String message;
 }
