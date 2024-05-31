@@ -23,7 +23,6 @@ public class Specs {
     public static ResponseSpecification responseSpecification(){
         return new ResponseSpecBuilder()
                 .log(LogDetail.ALL)
-                .expectStatusCode(200)
                 .expectResponseTime(lessThan(5000L))
                 .build();
     }

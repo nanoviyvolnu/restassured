@@ -3,6 +3,7 @@ package tests;
 import Models.CreateUserRequest;
 import Models.CreateUserResponse;
 import Models.GetUserResponse;
+import Service.DataInitializer;
 import Specifications.Specs;
 import Utils.GenerateValidPassword;
 import com.github.javafaker.Faker;
@@ -10,107 +11,118 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
-import static io.restassured.RestAssured.get;
 import static io.restassured.RestAssured.given;
 
 public class RestTestAccount {
-    @Test(testName = "Test api for create a new user")
-    public void createNewUserTest(){
-        Faker faker = new Faker();
-        GenerateValidPassword generateValidPassword = new GenerateValidPassword();
-        CreateUserRequest createUserRequest = new CreateUserRequest();
-        createUserRequest.setUserName(faker.name().username());
-        createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
 
-        System.out.println(createUserRequest.getUserName());
-        System.out.println(createUserRequest.getPassword());
+    private DataInitializer dataInitializer;
 
-        CreateUserResponse createUserResponse = given()
-                .log().all()
-                .when()
+    private CreateUserResponse createUserResponse;
+
+    @BeforeTest
+    public void setUp(){
+        Specs.installSpec(Specs.requestSpecification("https://demoqa.com/", "Account/v1/"), Specs.responseSpecification());
+    }
+
+
+    @Test
+    public void setUpCreateUser() {
+        dataInitializer = new DataInitializer();
+        dataInitializer.initializeDefaultData();
+
+        CreateUserRequest createUserRequest = dataInitializer.getCreateUserRequest();
+
+        createUserResponse = given()
                 .contentType(ContentType.JSON)
                 .body(createUserRequest)
                 .post("https://demoqa.com/Account/v1/User")
                 .then()
-                .log().all().statusCode(201)
-                .extract().response().getBody().as(CreateUserResponse.class);
-
-        System.out.println("UserID: " + createUserResponse.getUserID());
-
-        Assert.assertNotNull(createUserResponse.getUserID());
-    }
-
-    @Test(testName = "Test api for authorized")
-    public void authorizedTest(){
-        Faker faker = new Faker();
-        GenerateValidPassword generateValidPassword = new GenerateValidPassword();
-        CreateUserRequest createUserRequest = new CreateUserRequest();
-        createUserRequest.setUserName(faker.name().username());
-        createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
-//        createUserRequest.setUserName("reynaldo.harvey");
-//        createUserRequest.setPassword("Vl9)<!)!");
-
-        Response response = given()
-                .contentType(ContentType.JSON)
-                .body(createUserRequest)
-                .when()
-                .post("https://demoqa.com/Account/v1/Authorized")
-                .then()
-                .statusCode(200)
-                .extract().response();
-
-        boolean contentType = Boolean.parseBoolean(response.contentType());
-        Assert.assertFalse(contentType, "Response for successful authorization can be true!");
-    }
-
-    @Test(testName = "Test api for generate a token")
-    public void generateTokenTest(){
-        Faker faker = new Faker();
-        GenerateValidPassword generateValidPassword = new GenerateValidPassword();
-        CreateUserRequest createUserRequest = new CreateUserRequest();
-//        createUserRequest.setUserName(faker.name().username());
-//        createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
-        createUserRequest.setUserName("reynaldo.harvey");
-        createUserRequest.setPassword("Vl9)<!)!");
-
-        CreateUserResponse createUserResponse = RestAssured
-                .given()
-                .log().all()
-                .when()
-                .contentType(ContentType.JSON)
-                .body(createUserRequest)
-                .post("https://demoqa.com/Account/v1/GenerateToken")
-                .then()
-                .log().all()
-                .statusCode(200)
                 .extract().response().as(CreateUserResponse.class);
 
-        System.out.println(createUserResponse.getToken());
+        if ("User exists!".equals(createUserResponse.getMessage())) {
+            System.out.println("!!! User already exists !!!");
+            System.out.println("!!!  Create a new user  !!!");
+            dataInitializer.initialize();
+        }
     }
 
-    @Test(testName = "Test api for get user data")
-    public void getUserTestById(){
-        Specs.installSpec(Specs.requestSpecification("https://demoqa.com/", "Account/v1/"), Specs.responseSpecification());
+    @Test
+    public void setUpDefaultUser() {
+        dataInitializer = new DataInitializer();
+        dataInitializer.initializeDefaultData();
+    }
 
-        Faker faker = new Faker();
-        GenerateValidPassword generateValidPassword = new GenerateValidPassword();
 
-        CreateUserRequest createUserRequest = new CreateUserRequest();
-        createUserRequest.setUserName(faker.name().username());
-        createUserRequest.setPassword(generateValidPassword.generatePassword(faker));
+    @Test(groups = "createUser", testName = "Test API for creating a new user", dependsOnMethods = "setUpCreateUser")
+    public void createNewUserTest() {
+        CreateUserRequest createUserRequest = dataInitializer.getCreateUserRequest();
 
-        CreateUserResponse createUserResponse =
-                given()
+        CreateUserResponse createUserResponse = given()
                 .when()
+                    .contentType(ContentType.JSON)
                     .body(createUserRequest)
                     .post("User")
                 .then()
                     .statusCode(201)
                     .extract().response().as(CreateUserResponse.class);
 
-        System.out.println("UserID: " + createUserResponse.getUserID());
+        Assert.assertNotNull(createUserResponse.getUserID());
+    }
+
+    @Test(groups = "setUpDefaultUser", testName = "Test API for generating a token", dependsOnMethods = "setUpDefaultUser")
+    public void generateTokenTest(){
+        CreateUserRequest createUserRequest = dataInitializer.getCreateUserRequest();
+
+        CreateUserResponse createUserResponse = RestAssured
+                .given()
+                    .when()
+                    .body(createUserRequest)
+                    .post("GenerateToken")
+                .then()
+                    .statusCode(200)
+                    .extract()
+                    .response()
+                    .as(CreateUserResponse.class);
+
+        Assert.assertNotNull(createUserResponse.getToken());
+    }
+
+    @Test(groups = "setUpDefaultUser", testName = "Test api for authorized", dependsOnMethods = "setUpDefaultUser")
+    public void authorizedTest(){
+        CreateUserRequest createUserRequest = dataInitializer.getCreateUserRequest();
+
+        Response response = given()
+                .when()
+                    .body(createUserRequest)
+                    .post("Authorized")
+                .then()
+                    .statusCode(200)
+                    .extract()
+                    .response();
+
+        boolean contentType = Boolean.parseBoolean(response.contentType());
+        Assert.assertFalse(contentType, "Response for successful authorization can be true!");
+    }
+
+
+    @Test(groups = "createUser", testName = "Test api for get user data", dependsOnMethods = "setUpCreateUser")
+    public void getUserTestById(){
+        CreateUserRequest createUserRequest = dataInitializer.getCreateUserRequest();
+
+        CreateUserResponse createUserResponse = given()
+                .when()
+                    .contentType(ContentType.JSON)
+                    .body(createUserRequest)
+                    .post("User")
+                .then()
+                    .statusCode(201)
+                    .extract()
+                    .response()
+                    .as(CreateUserResponse.class);
 
         CreateUserResponse createUserResponse1 = RestAssured
                 .given()
